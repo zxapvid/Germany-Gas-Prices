@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070708">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Energie">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Energie-Preistafel</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #070708;
+  --glow: rgba(255, 255, 255, .07);
+  --card: #111113;
+  --line: rgba(255, 255, 255, .09);
+  --ink: #F5F5F6;
+  --muted: #8F8F98;
+  --track: #29292E;
+  --field: rgba(255, 255, 255, .05);
+  --btn-bg: #FFFFFF;
+  --btn-fg: #0A0A0B;
+  --dock-bg: rgba(14, 14, 16, .82);
+  --knob: #FFFFFF;
+  --gas: #6BA4FF;
+  --oil: #F28B3C;
+  --pellets: #C8A27C;
+  --power: #F3C431;
+  --wp: #46D6C4;
+  --ok: #4ADE80;
+  --warn: #F2A93C;
+  --focus: #9CC2FF;
+  --font: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { padding-top: env(safe-area-inset-top, 0px); background: var(--bg); }
+body {
+  margin: 0;
+  background: radial-gradient(120% 50% at 50% -8%, var(--glow), transparent 65%), var(--bg);
+  background-repeat: no-repeat;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+  padding-block: 22px 128px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3, p, ol, ul { margin: 0; }
+button, input { font: inherit; color: inherit; }
+a { color: var(--ink); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* Kopf mit Logo */
+.head { display: flex; flex-direction: column; gap: 12px; padding: 0 4px 6px; }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.logo { width: 52px; height: 52px; border-radius: 14px; flex: none; box-shadow: 0 0 0 1px var(--line); }
+.brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand-name { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+.meta-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.checked { font-family: var(--font-mono); font-size: 12px; }
+.checked.stale { color: var(--warn); }
+
+/* Pill-Tabs */
+.seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 4px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--field);
+}
+.seg button {
+  min-width: 0; min-height: 44px; padding: 6px 6px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted); font-size: 14px; font-weight: 500; letter-spacing: -.005em;
+  cursor: pointer; hyphens: manual; line-height: 1.15;
+}
+.seg button[aria-pressed="true"] { background: var(--btn-bg); color: var(--btn-fg); font-weight: 600; }
+
+/* Karten */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; min-width: 0; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 18px 18px 6px; }
+.card-title { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.card-aside { font-size: 12px; color: var(--muted); font-family: var(--font-mono); text-align: right; }
+
+.rows { display: flex; flex-direction: column; }
+.row { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.row + .row { border-top: 1px solid var(--line); }
+[data-id="gas"] { --cat: var(--gas); }
+[data-id="oil"] { --cat: var(--oil); }
+[data-id="pellets"] { --cat: var(--pellets); }
+[data-id="power"] { --cat: var(--power); }
+[data-id="wp"] { --cat: var(--wp); }
+.row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); flex: none; align-self: center; }
+.name { font-size: 16px; font-weight: 500; line-height: 1.25; }
+.val { display: flex; align-items: baseline; gap: 5px; flex: none; }
+.num { font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.unit { font-size: 12px; color: var(--muted); }
+
+.track { position: relative; height: 24px; }
+.rail { position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; border-radius: 999px; background: var(--track); }
+.fill { position: absolute; left: 0; top: 50%; height: 6px; margin-top: -3px; width: var(--p, 0%); border-radius: 999px; background: var(--cat); }
+.knob {
+  position: absolute; top: 50%; left: var(--p, 0%); width: 28px; height: 22px; margin: -11px 0 0 -14px;
+  border-radius: 999px; background: var(--knob); box-shadow: 0 1px 5px rgba(0, 0, 0, .35); border: 1px solid rgba(0, 0, 0, .08);
+}
+html.anim .fill { transition: width .5s cubic-bezier(.2, .7, .2, 1); }
+html.anim .knob { transition: left .5s cubic-bezier(.2, .7, .2, 1); }
+
+.sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.pill { display: inline-block; background: var(--btn-bg); color: var(--btn-fg); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+.plus { font-family: var(--font-mono); font-size: 12px; color: var(--ink); }
+.m1 { font-size: 13px; color: var(--muted); }
+.m2 { font-size: 12px; color: var(--muted); margin-top: -4px; }
+.scale { display: flex; justify-content: space-between; padding: 8px 18px 16px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); }
+.note { padding: 0 18px 8px; font-size: 13px; color: var(--muted); max-width: 62ch; }
+.linkbtn { margin: 0 18px 18px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 32px; text-align: left; }
+.note:last-child { padding-bottom: 18px; }
+
+/* Live: Börsenstrom */
+.live-status { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.pulse.ok { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: ping 2.4s ease-out infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 8px transparent; } }
+.live-body { padding: 4px 18px 6px; display: flex; flex-direction: column; gap: 6px; }
+.live-val { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.live-val .num { font-size: 44px; line-height: 1.05; }
+.chart { margin-top: 10px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.cb { fill: var(--muted); opacity: .45; }
+.cb.now { fill: var(--power); opacity: 1; }
+.zero { stroke: var(--line); stroke-width: 1; }
+.chart-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.live-foot { padding: 12px 18px 18px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); margin-top: 10px; }
+.live-foot p { font-size: 13px; color: var(--muted); max-width: 62ch; }
+.err { font-family: var(--font-mono); font-size: 11px; word-break: break-word; }
+.btn2 {
+  align-self: flex-start; min-height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--field); font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.btn2:disabled { opacity: .5; cursor: default; }
+
+/* Rechner */
+.calc { scroll-margin-top: 14px; }
+.calc-in { padding: 6px 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px; background: var(--field); }
+.field:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.field label { font-size: 15px; color: var(--muted); }
+.field .in { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.field input { width: 8ch; min-width: 0; border: 0; background: transparent; padding: 0; text-align: right; font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.field input.short { width: 4.5ch; }
+.field input::-webkit-outer-spin-button, .field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.field input:focus-visible { outline: none; }
+.field .u { font-size: 12px; color: var(--muted); }
+.group-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 4px 0; }
+.res { list-style: none; padding: 0; border-top: 1px solid var(--line); }
+.res-row { padding: 14px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+.res-row + .res-row { border-top: 1px solid var(--line); }
+.res-row .who { grid-column: 1; }
+.res-row .cost { grid-column: 2; grid-row: 1 / span 2; font-size: 24px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.res-row .sub2 { grid-column: 1; font-size: 12px; color: var(--muted); padding-left: 19px; }
+.calc-note { padding: 14px 18px 18px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+
+/* Info */
+details + details { border-top: 1px solid var(--line); }
+summary { list-style: none; cursor: pointer; padding: 16px 18px; font-size: 16px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; }
+details[open] summary::after { transform: rotate(45deg); }
+.det { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--muted); max-width: 62ch; }
+.det ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.det strong { color: var(--ink); font-weight: 600; }
+
+.noscript { padding: 16px 18px; font-size: 14px; color: var(--muted); }
+
+/* Feste Leiste unten */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  padding-top: 14px; padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--dock-bg); border-top: 1px solid var(--line); border-radius: 26px 26px 0 0;
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+.dock-in { max-width: 560px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
+.dock-label {
+  flex: none; height: 56px; padding: 0 16px; display: grid; place-items: center; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--field); font-size: 13px; color: var(--muted); text-align: center; line-height: 1.2;
+}
+.dock-btn {
+  flex: 1; min-width: 0; height: 56px; border: 0; border-radius: 999px; background: var(--btn-bg); color: var(--btn-fg);
+  font-size: 17px; font-weight: 600; letter-spacing: -.01em; cursor: pointer;
+}
+.dock-btn:focus-visible { outline-offset: 3px; }
+
+@media (max-width: 380px) {
+  .seg button { font-size: 13px; }
+  .dock-label { padding: 0 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.anim .fill, html.anim .knob, summary::after { transition: none; }
+  .pulse.ok { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <header class="head">
+    <div class="brand">
+      <img class="logo" src="icons/icon.svg" alt="" width="52" height="52">
+      <div class="brand-text">
+        <p class="brand-name">Dick Energy</p>
+        <h1>Energie-Preistafel</h1>
+      </div>
+    </div>
+    <div class="meta-line">
+      <span>Deutschland · Haushalte · brutto</span>
+      <span class="checked" id="checked">Preise werden geprüft …</span>
+    </div>
+  </header>
+
+  <div class="seg" role="group" aria-label="Tarif für Gas und Haushaltsstrom" data-key="tarif">
+    <button type="button" data-v="neu" aria-pressed="true">Neukunde</button>
+    <button type="button" data-v="bestand" aria-pressed="false">Bestand</button>
+    <button type="button" data-v="grund" aria-pressed="false">Grund&shy;versorgung</button>
+  </div>
+  <div class="seg" role="group" aria-label="Preis je kWh Energie oder je kWh Wärme" data-key="basis">
+    <button type="button" data-v="energie" aria-pressed="true">kWh Energie</button>
+    <button type="button" data-v="waerme" aria-pressed="false">kWh Wärme</button>
+  </div>
+
+  <section class="card" aria-label="Preise im Vergleich">
+    <div class="card-head">
+      <h2 class="card-title">Preise</h2>
+      <span class="card-aside" id="aside">ct je kWh Energie</span>
+    </div>
+    <div class="rows" id="rows" aria-live="polite"></div>
+    <div class="scale" aria-hidden="true"><span>0</span><span>45 ct/kWh</span></div>
+    <p class="note" id="note"></p>
+    <button type="button" class="linkbtn" id="goJaz" hidden>Jahresarbeitszahl ändern</button>
+  </section>
+
+  <section class="card" id="live" aria-label="Börsenstrom jetzt">
+    <div class="card-head">
+      <h2 class="card-title">Börsenstrom jetzt</h2>
+      <span class="live-status"><i class="pulse" id="livePulse" aria-hidden="true"></i><span id="liveStatus">lädt …</span></span>
+    </div>
+    <div class="live-body">
+      <p class="live-val"><span class="num" id="liveNum">–</span><span class="unit">ct/kWh netto</span></p>
+      <p class="m1" id="liveWhen">Preis wird geladen …</p>
+      <div class="chart" id="liveChart" aria-hidden="true"></div>
+      <div class="chart-axis" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24 Uhr</span></div>
+      <p class="m1" id="liveStats"></p>
+    </div>
+    <div class="live-foot">
+      <p id="liveNote">Großhandelspreis ohne Netzentgelte, Steuern und Abgaben. Die Strompreise oben enthalten beides.</p>
+      <p class="err" id="liveErr" hidden></p>
+      <button type="button" class="btn2" id="liveRefresh">Aktualisieren</button>
+    </div>
+  </section>
+
+  <section class="card calc" id="calc" aria-label="Heizkosten im Jahr">
+    <div class="card-head">
+      <h2 class="card-title">Heizkosten im Jahr</h2>
+      <span class="card-aside">Richtwert</span>
+    </div>
+    <div class="calc-in">
+      <div class="field">
+        <label for="bedarf">Wärmebedarf</label>
+        <div class="in">
+          <input id="bedarf" type="number" inputmode="numeric" min="0" max="500000" step="500" value="20000">
+          <span class="u">kWh/Jahr</span>
+        </div>
+      </div>
+      <div class="seg" id="chipsBedarf" role="group" aria-label="Beispielwerte für den Wärmebedarf">
+        <button type="button" data-v="10000" aria-pressed="false">10.000</button>
+        <button type="button" data-v="20000" aria-pressed="true">20.000</button>
+        <button type="button" data-v="30000" aria-pressed="false">30.000</button>
+      </div>
+      <div class="field">
+        <label for="jaz">Jahresarbeitszahl</label>
+        <div class="in">
+          <input id="jaz" class="short" type="number" inputmode="decimal" min="1.5" max="7" step="0.1" value="3.6">
+          <span class="u">Wärmepumpe</span>
+        </div>
+      </div>
+      <div class="seg" id="chipsJaz" role="group" aria-label="Beispielwerte für die Jahresarbeitszahl">
+        <button type="button" data-v="3" aria-pressed="false">3,0</button>
+        <button type="button" data-v="3.6" aria-pressed="true">3,6</button>
+        <button type="button" data-v="4.4" aria-pressed="false">4,4</button>
+      </div>
+    </div>
+    <ol class="res" id="res"></ol>
+    <p class="calc-note" id="calcNote"></p>
+  </section>
+
+  <section class="card" aria-label="Hintergrund">
+    <details>
+      <summary>So wird gerechnet</summary>
+      <div class="det">
+        <ul>
+          <li><strong>Heizöl:</strong> 1 Liter hat etwa 10 kWh. <span id="tOil"></span></li>
+          <li><strong>Erdgas:</strong> 1 m³ hat etwa 10 kWh. <span id="tGas"></span></li>
+          <li><strong>Holzpellets:</strong> 1 kg hat etwa 5 kWh. <span id="tPellets"></span></li>
+          <li><strong>Wärme statt Energie:</strong> Gas und Öl werden durch den Kesselwirkungsgrad von 95 % geteilt, Pellets durch 90 %, eine Wärmepumpe durch ihre Jahresarbeitszahl.</li>
+          <li><strong>Welcher Stromtarif für die Wärmepumpe:</strong> Die Tafel rechnet zwei Zeilen. „Haushalt“ nimmt den oben gewählten Haushaltsstrom-Tarif. „WP-Tarif“ nimmt einen Wärmepumpentarif: <span id="tWp"></span></li>
+        </ul>
+        <p>Wärmepumpentarife gibt es für Pumpen ab 4,2 kW, die der Netzbetreiber nach § 14a EnWG bei drohender Überlastung drosseln darf, aber nicht unter 4,2 kW. Dafür sind die Netzentgelte niedriger: pauschal (Modul 1), mit eigenem Zähler 60 % weniger auf den Arbeitspreis (Modul 2) oder zeitabhängig mit Smart Meter (Modul 3). Typische Wärmepumpentarife nennt Enter mit 20 bis 26 ct je kWh (Stand Mai 2026).</p>
+        <p>Kesselwirkungsgrad und Jahresarbeitszahl sind Annahmen. Deine Anlage kann davon abweichen.</p>
+      </div>
+    </details>
+    <details>
+      <summary>Quellen und Stand</summary>
+      <div class="det">
+        <p>Die Preise der Tafel stehen in der Datei preise.json. Die Seite liest sie jede volle Stunde neu. Sie sind Durchschnittswerte aus Vergleichsportalen und Marktberichten. Dein Angebot für Postleitzahl und Menge liegt darüber oder darunter. Die Vorjahreswerte sind Näherungen. Nur der Börsenstrom kommt direkt aus dem Netz.</p>
+        <ul id="tStand"></ul>
+        <ul>
+          <li>Heizöl: <a href="https://www.agrarheute.com/energie/heizoel/heizoelpreise-90-teurer-2025-heizoelkaeufer-winter-2026-fuer-heizoel-zahlen-643601" target="_blank" rel="noopener">agrarheute</a>, <a href="https://esyoil.com/news/erneute-eskalation-am-persischen-golf-liegt-in-der-luft-rohoelversorgung-unerwartet-stabil?id=109236" target="_blank" rel="noopener">esyoil</a></li>
+          <li>Gas: <a href="https://www.vergleich.de/gaspreise.html" target="_blank" rel="noopener">vergleich.de</a>, <a href="https://1-gasvergleich.com/gaspreisentwicklung/" target="_blank" rel="noopener">1-gasvergleich.com</a>, <a href="https://www.verivox.de/gas/gaspreise/" target="_blank" rel="noopener">Verivox</a></li>
+          <li>Pellets: <a href="https://www.topagrar.com/energie/news/pelletspreis-steigt-im-oktober-2026-weniger-stark-an-20030280.html" target="_blank" rel="noopener">Deutsches Pelletinstitut über topagrar</a></li>
+          <li>Strom: <a href="https://strom-report.com/strompreise/" target="_blank" rel="noopener">Strom-Report</a>, <a href="https://www.vergleich.de/strompreise.html" target="_blank" rel="noopener">vergleich.de</a>, <a href="https://www.netz-trends.de/stromtarife-fu-r-neukunden-in-deutschland-im-oktober-2026-um-13-9-prozent-teurer/" target="_blank" rel="noopener">netz-trends</a></li>
+          <li>Wärmepumpentarif und § 14a: <a href="https://www.enter.de/blog/waermepumpenstrom" target="_blank" rel="noopener">Enter</a>, <a href="https://42watt.de/magazin/paragraph-14a-enwg" target="_blank" rel="noopener">42watt</a></li>
+          <li>Börsenstrom live: <a href="https://www.awattar.de/services/api" target="_blank" rel="noopener">aWATTar</a>, ersatzweise <a href="https://www.energy-charts.info/" target="_blank" rel="noopener">Energy-Charts (Fraunhofer ISE)</a></li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <noscript><p class="noscript">Diese Seite braucht JavaScript, um die Preise anzuzeigen.</p></noscript>
+</main>
+
+<div class="dock">
+  <div class="dock-in">
+    <span class="dock-label" id="standLabel">Stand<br>–</span>
+    <button type="button" class="dock-btn" id="goCalc">Heizkosten berechnen</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var HOUR = 3600000;
+
+  /* ===== Eingebaute Werte. Sie gelten nur, falls preise.json nicht geladen werden kann.
+         Die Datei preise.json hat dieselbe Form und ist die, die du änderst. ===== */
+  var DEFAULTS = {
+    aktualisiert: '2026-11-01',
+    heizoel: { eurPro100L: 173, vorjahr: 92, stand: '29.10.2026' },
+    gas: { neu: 12.6, bestand: 11.8, grund: 13.6, vorjahrNeu: 8.7, stand: '30.10.2026' },
+    strom: { neu: 31.2, bestand: 33.4, grund: 40.4, vorjahrNeu: 27.0, stand: '29.10.2026' },
+    waermepumpenstrom: { tarif: 'E.ON ÖkoStrom Wärmepumpe ET 12', ct: 18.9, stand: '01.11.2026' },
+    pellets: { eurProTonne: 464.61, kwhProKg: 5, stand: 'Oktober 2026' }
+  };
+  /* Annahmen für die Umrechnung auf Wärme */
+  var CFG = { kwhProL: 10, etaGas: 0.95, etaOel: 0.95, etaPellets: 0.90, scaleMax: 45, jazStandard: 3.6, jazMin: 1.5, jazMax: 7 };
+
+  var ROWS = [
+    { id: 'gas' }, { id: 'oil' }, { id: 'pellets' }, { id: 'power' }, { id: 'wp' }
+  ];
+  var TARIF_LABEL = { neu: 'Ø Neukundentarife', bestand: 'Ø Bestandskunden', grund: 'Ø Grundversorgung' };
+  var STORE = 'energie-preistafel-v2';
+  var LIVE_KEY = 'energie-preistafel-live';
+  var state = { tarif: 'neu', basis: 'energie', bedarf: 20000, jaz: CFG.jazStandard };
+
+  var P = JSON.parse(JSON.stringify(DEFAULTS));
+  var checkedAt = 0;
+  var pricesLoading = false;
+
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE));
+    if (saved) {
+      if (TARIF_LABEL[saved.tarif]) state.tarif = saved.tarif;
+      if (saved.basis === 'energie' || saved.basis === 'waerme') state.basis = saved.basis;
+      if (typeof saved.bedarf === 'number' && saved.bedarf >= 0 && saved.bedarf <= 500000) state.bedarf = saved.bedarf;
+      if (typeof saved.jaz === 'number' && saved.jaz >= CFG.jazMin && saved.jaz <= CFG.jazMax) state.jaz = saved.jaz;
+    }
+  } catch (e) { /* ohne Speicher weiter */ }
+
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* egal */ }
+  }
+
+  var nf1 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var nf2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var nf0 = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function hhmm(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function fmtCt(v) { return nf1.format(v).replace('-', '−'); }
+  function fmtDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+    return m ? m[3] + '.' + m[2] + '.' + m[1] : '–';
+  }
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- Preise aus preise.json prüfen und übernehmen ---------- */
+  function num(v, lo, hi, fb) { v = Number(v); return (isFinite(v) && v >= lo && v <= hi) ? v : fb; }
+  function opt(v, lo, hi) { if (v === undefined || v === null) return null; v = Number(v); return (isFinite(v) && v >= lo && v <= hi) ? v : null; }
+  function str(v) { return (typeof v === 'string' && v.length > 0 && v.length <= 80) ? v : ''; }
+
+  function applyPrices(j) {
+    if (!j || typeof j !== 'object') throw new Error('Ungültige Datei');
+    var d = DEFAULTS, o = j.heizoel || {}, g = j.gas || {}, s = j.strom || {}, w = j.waermepumpenstrom || {}, p = j.pellets || {};
+    P = {
+      aktualisiert: /^\d{4}-\d{2}-\d{2}/.test(j.aktualisiert || '') ? String(j.aktualisiert).slice(0, 10) : d.aktualisiert,
+      heizoel: {
+        eurPro100L: num(o.eurPro100L, 20, 600, d.heizoel.eurPro100L),
+        vorjahr: opt(o.vorjahr, 20, 600), stand: str(o.stand)
+      },
+      gas: {
+        neu: num(g.neu, 2, 80, d.gas.neu), bestand: num(g.bestand, 2, 80, d.gas.bestand), grund: num(g.grund, 2, 80, d.gas.grund),
+        vorjahrNeu: opt(g.vorjahrNeu, 2, 80), stand: str(g.stand)
+      },
+      strom: {
+        neu: num(s.neu, 5, 120, d.strom.neu), bestand: num(s.bestand, 5, 120, d.strom.bestand), grund: num(s.grund, 5, 120, d.strom.grund),
+        vorjahrNeu: opt(s.vorjahrNeu, 5, 120), stand: str(s.stand)
+      },
+      waermepumpenstrom: {
+        tarif: str(w.tarif) || d.waermepumpenstrom.tarif,
+        ct: num(w.ct, 3, 120, d.waermepumpenstrom.ct), stand: str(w.stand)
+      },
+      pellets: {
+        eurProTonne: num(p.eurProTonne, 100, 2000, d.pellets.eurProTonne),
+        kwhProKg: num(p.kwhProKg, 3, 6, d.pellets.kwhProKg), stand: str(p.stand)
+      }
+    };
+  }
+
+  /* ---------- Umrechnung ---------- */
+  /* ct je kWh Energie */
+  function raw(id) {
+    if (id === 'gas') return P.gas[state.tarif];
+    if (id === 'oil') return P.heizoel.eurPro100L / CFG.kwhProL;
+    if (id === 'pellets') return P.pellets.eurProTonne / (P.pellets.kwhProKg * 10);
+    if (id === 'power') return P.strom[state.tarif];
+    return P.waermepumpenstrom.ct;
+  }
+  function rawPrev(id) {
+    if (id === 'oil') return P.heizoel.vorjahr === null ? null : P.heizoel.vorjahr / CFG.kwhProL;
+    if (id === 'gas') return state.tarif === 'neu' ? P.gas.vorjahrNeu : null;
+    if (id === 'power') return state.tarif === 'neu' ? P.strom.vorjahrNeu : null;
+    return null;
+  }
+  function eta(id) {
+    if (id === 'gas') return CFG.etaGas;
+    if (id === 'oil') return CFG.etaOel;
+    if (id === 'pellets') return CFG.etaPellets;
+    return state.jaz;
+  }
+  function toHeat(id, v) { return v / eta(id); }
+  function conv(id, v) { return state.basis === 'waerme' ? toHeat(id, v) : v; }
+  function val(id) { return conv(id, raw(id)); }
+  function rowName(id) {
+    var w = state.basis === 'waerme';
+    if (id === 'gas') return 'Erdgas';
+    if (id === 'oil') return 'Heizöl';
+    if (id === 'pellets') return 'Holzpellets';
+    if (id === 'power') return w ? 'Wärmepumpe · Haushalt' : 'Haushaltsstrom';
+    return w ? 'Wärmepumpe · WP-Tarif' : 'Wärmepumpenstrom';
+  }
+  function pctText(x) { return Math.round(x * 100) + ' %'; }
+
+  /* ---------- Preistafel ---------- */
+  var rowsEl = $('rows'), noteEl = $('note'), asideEl = $('aside'), resEl = $('res');
+  var inputEl = $('bedarf'), jazEl = $('jaz'), goJaz = $('goJaz');
+  var els = {};
+
+  ROWS.forEach(function (r) {
+    var a = document.createElement('article');
+    a.className = 'row';
+    a.setAttribute('data-id', r.id);
+    a.innerHTML =
+      '<div class="row-top"><div class="who"><span class="dot" aria-hidden="true"></span><h3 class="name"></h3></div>' +
+      '<p class="val"><span class="num"></span><span class="unit">ct/kWh</span></p></div>' +
+      '<div class="track" aria-hidden="true"><span class="rail"></span><span class="fill"></span><span class="knob"></span></div>' +
+      '<p class="sub"><span class="rank"></span><span class="m1"></span></p>' +
+      '<p class="m2"></p>';
+    rowsEl.appendChild(a);
+    els[r.id] = {
+      root: a,
+      name: a.querySelector('.name'),
+      num: a.querySelector('.num'),
+      rank: a.querySelector('.rank'),
+      m1: a.querySelector('.m1'),
+      m2: a.querySelector('.m2')
+    };
+  });
+
+  function meta1(id) {
+    var p = raw(id), w = state.basis === 'waerme', jz = nf1.format(state.jaz);
+    if (id === 'gas') return w ? nf1.format(p) + ' ct/kWh Gas, Kessel ' + pctText(CFG.etaGas) : TARIF_LABEL[state.tarif] + ' · ≈ ' + nf2.format(p / 10) + ' € je m³';
+    if (id === 'oil') return w ? nf1.format(p) + ' ct/kWh Öl, Kessel ' + pctText(CFG.etaOel) : nf2.format(P.heizoel.eurPro100L) + ' € je 100 L inkl. Lieferung';
+    if (id === 'pellets') return w ? nf1.format(p) + ' ct/kWh Pellets, Kessel ' + pctText(CFG.etaPellets) : nf2.format(P.pellets.eurProTonne) + ' € je Tonne · ' + nf1.format(P.pellets.kwhProKg) + ' kWh je kg';
+    if (id === 'power') return w ? nf1.format(p) + ' ct/kWh Strom, Jahresarbeitszahl ' + jz : TARIF_LABEL[state.tarif] + ' · Haushaltsstrom';
+    return w ? nf1.format(p) + ' ct/kWh Strom, Jahresarbeitszahl ' + jz : P.waermepumpenstrom.tarif;
+  }
+  function meta2(id) {
+    if (id === 'pellets') return 'Ø Deutschland, 6 t Abnahme' + (P.pellets.stand ? ' · ' + P.pellets.stand : '');
+    if (id === 'wp') return 'Tarif aus der Region' + (P.waermepumpenstrom.stand ? ' · Stand ' + P.waermepumpenstrom.stand : '');
+    return '';
+  }
+
+  function renderBoard() {
+    var list = ROWS.map(function (r) { return { id: r.id, v: val(r.id) }; })
+      .sort(function (a, b) { return a.v - b.v; });
+    var min = list[0].v;
+
+    list.forEach(function (item, i) {
+      var id = item.id, v = item.v, e = els[id];
+      e.root.style.order = String(i);
+      e.root.style.setProperty('--p', Math.min(100, v / CFG.scaleMax * 100) + '%');
+      e.name.textContent = rowName(id);
+      e.num.textContent = nf1.format(v);
+      if (i === 0) {
+        e.rank.innerHTML = '<span class="pill">Günstigster</span>';
+      } else {
+        e.rank.innerHTML = '<span class="plus">+' + nf1.format(v - min) + ' ct · ×' + nf1.format(v / min) + '</span>';
+      }
+      e.m1.textContent = meta1(id);
+      var pv = rawPrev(id), m2 = meta2(id);
+      if (pv !== null) {
+        var prevV = conv(id, pv);
+        m2 = 'Vor einem Jahr ca. ' + nf1.format(prevV) + ' ct (+' + Math.round((v / prevV - 1) * 100) + ' %)';
+      }
+      e.m2.hidden = !m2;
+      e.m2.textContent = m2;
+    });
+
+    var heat = state.basis === 'waerme';
+    asideEl.textContent = heat ? 'ct je kWh Wärme' : 'ct je kWh Energie';
+    goJaz.hidden = !heat;
+    noteEl.textContent = heat
+      ? 'Wärme = Preis geteilt durch den Wirkungsgrad: Gas und Öl ' + pctText(CFG.etaGas) + ', Pellets ' + pctText(CFG.etaPellets) + ', Wärmepumpe Jahresarbeitszahl ' + nf1.format(state.jaz) + '. Das sind Annahmen, keine Messwerte.'
+      : 'Heizöl (10 kWh je Liter) und Pellets (5 kWh je kg) sind auf ct je kWh umgerechnet. Der Tarif oben gilt für Gas und Haushaltsstrom. Der Wärmepumpentarif ist ein fester Wert.';
+  }
+
+  function renderCalc() {
+    var n = state.bedarf;
+    var items = ROWS.map(function (r) {
+      return { id: r.id, cost: n * toHeat(r.id, raw(r.id)) / 100 };
+    }).sort(function (a, b) { return a.cost - b.cost; });
+    var min = items[0].cost;
+
+    resEl.innerHTML = items.map(function (it, i) {
+      var name = it.id === 'power' ? 'Wärmepumpe · Haushalt' : it.id === 'wp' ? 'Wärmepumpe · WP-Tarif' : rowName(it.id);
+      var sub = '≈ ' + nf0.format(it.cost / 12) + ' € pro Monat' +
+        (i === 0 ? ' · am günstigsten' : ' · +' + nf0.format(it.cost - min) + ' € im Jahr');
+      return '<li class="res-row" data-id="' + it.id + '">' +
+        '<div class="who"><span class="dot" aria-hidden="true"></span><span class="name">' + name + '</span></div>' +
+        '<span class="cost">' + nf0.format(it.cost) + ' €</span>' +
+        '<span class="sub2">' + sub + '</span></li>';
+    }).join('');
+
+    $('calcNote').textContent = 'Gerechnet mit dem Preis je kWh Wärme, ohne Grundpreis und Lieferpauschale. Wärmepumpe mit Jahresarbeitszahl ' +
+      nf1.format(state.jaz) + ', Haushalt mit dem oben gewählten Tarif. 20.000 kWh sind ein Beispiel für ein Einfamilienhaus.';
+
+    var chips = document.querySelectorAll('#chipsBedarf button');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute('aria-pressed', String(Number(chips[i].getAttribute('data-v')) === n));
+    }
+    var jchips = document.querySelectorAll('#chipsJaz button');
+    for (var k = 0; k < jchips.length; k++) {
+      jchips[k].setAttribute('aria-pressed', String(Math.abs(Number(jchips[k].getAttribute('data-v')) - state.jaz) < 1e-9));
+    }
+  }
+
+  function renderTexts() {
+    $('tOil').textContent = 'Aus ' + nf2.format(P.heizoel.eurPro100L) + ' € je 100 Liter werden so ' + nf1.format(raw('oil')) + ' ct je kWh.';
+    $('tGas').textContent = nf1.format(P.gas.neu) + ' ct je kWh sind rund ' + nf2.format(P.gas.neu / 10) + ' € je m³ (Neukunden).';
+    $('tPellets').textContent = 'Aus ' + nf2.format(P.pellets.eurProTonne) + ' € je Tonne werden so ' + nf1.format(raw('pellets')) + ' ct je kWh.';
+    $('tWp').textContent = P.waermepumpenstrom.tarif + ' mit ' + nf1.format(P.waermepumpenstrom.ct) + ' ct je kWh' +
+      (P.waermepumpenstrom.stand ? ' (Stand ' + P.waermepumpenstrom.stand + ')' : '') + '. Der Preis stammt aus der Region und gilt nicht überall.';
+
+    var lines = [
+      ['Heizöl', P.heizoel.stand], ['Gas', P.gas.stand], ['Haushaltsstrom', P.strom.stand],
+      ['Wärmepumpentarif', P.waermepumpenstrom.stand], ['Pellets', P.pellets.stand]
+    ];
+    var ul = $('tStand');
+    ul.innerHTML = '';
+    lines.forEach(function (l) {
+      var li = document.createElement('li');
+      li.textContent = l[0] + ': Stand ' + (l[1] || 'unbekannt');
+      ul.appendChild(li);
+    });
+    $('standLabel').innerHTML = 'Stand<br>' + fmtDate(P.aktualisiert);
+  }
+
+  function renderChecked() {
+    var el = $('checked');
+    var t = checkedAt ? 'Preise geprüft ' + hhmm(checkedAt) + ' Uhr' : 'Eingebaute Preise';
+    t += ' · Daten vom ' + fmtDate(P.aktualisiert);
+    var age = (Date.now() - Date.parse(P.aktualisiert + 'T12:00:00')) / 86400000;
+    var stale = isFinite(age) && age > 14;
+    if (stale) t += ' · älter als 2 Wochen';
+    el.textContent = t;
+    el.className = 'checked' + (stale ? ' stale' : '');
+  }
+
+  function renderAll() { renderBoard(); renderCalc(); renderTexts(); renderChecked(); }
+
+  /* ---------- Bedienung ---------- */
+  function syncSegs() {
+    var segs = document.querySelectorAll('.seg[data-key]');
+    for (var i = 0; i < segs.length; i++) {
+      var key = segs[i].getAttribute('data-key');
+      var btns = segs[i].querySelectorAll('button');
+      for (var j = 0; j < btns.length; j++) {
+        btns[j].setAttribute('aria-pressed', String(btns[j].getAttribute('data-v') === state[key]));
+      }
+    }
+  }
+  document.querySelectorAll('.seg[data-key]').forEach(function (seg) {
+    seg.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('button');
+      if (!btn || !seg.contains(btn)) return;
+      state[seg.getAttribute('data-key')] = btn.getAttribute('data-v');
+      syncSegs();
+      renderBoard(); renderCalc();
+      save();
+    });
+  });
+
+  inputEl.addEventListener('input', function () {
+    var n = parseFloat(inputEl.value);
+    if (!isFinite(n) || n < 0) n = 0;
+    state.bedarf = Math.min(n, 500000);
+    renderCalc();
+    save();
+  });
+  $('chipsBedarf').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button');
+    if (!btn) return;
+    state.bedarf = Number(btn.getAttribute('data-v'));
+    inputEl.value = String(state.bedarf);
+    renderCalc();
+    save();
+  });
+
+  jazEl.addEventListener('input', function () {
+    var n = parseFloat(jazEl.value);
+    if (!isFinite(n)) return;
+    state.jaz = Math.min(CFG.jazMax, Math.max(CFG.jazMin, n));
+    renderBoard(); renderCalc();
+    save();
+  });
+  $('chipsJaz').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button');
+    if (!btn) return;
+    state.jaz = Number(btn.getAttribute('data-v'));
+    jazEl.value = String(state.jaz);
+    renderBoard(); renderCalc();
+    save();
+  });
+
+  function scrollToCalc() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('calc').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
+  $('goCalc').addEventListener('click', scrollToCalc);
+  goJaz.addEventListener('click', scrollToCalc);
+
+  /* ---------- Netzabruf ---------- */
+  function getJson(url, ms, cacheMode) {
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, ms);
+    return fetch(url, { cache: cacheMode, signal: ctl ? ctl.signal : undefined })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (j) { clearTimeout(timer); return j; }, function (e) { clearTimeout(timer); throw e; });
+  }
+
+  /* preise.json: bei jedem Start und danach jede volle Stunde */
+  function loadPrices() {
+    if (pricesLoading) return Promise.resolve();
+    pricesLoading = true;
+    return getJson('preise.json?h=' + Math.floor(Date.now() / HOUR), 8000, 'no-cache')
+      .then(function (j) {
+        applyPrices(j);
+        checkedAt = Date.now();
+        renderAll();
+      })
+      .catch(function () { /* es bleiben die bisherigen Werte */ })
+      .then(function () { pricesLoading = false; renderChecked(); });
+  }
+
+  /* ---------- Live: Börsenstrom (Day-Ahead, Deutschland) ---------- */
+  var AWATTAR = 'https://api.awattar.de/v1/marketdata';
+  var ENERGY_CHARTS = 'https://api.energy-charts.info/price?bzn=DE-LU';
+  var LIVE_FRESH = 55 * 60000;
+  var live = { intervals: null, source: '', savedAt: 0, err: '' };
+  var loading = false;
+  var lastTry = 0;
+
+  try {
+    var c = JSON.parse(localStorage.getItem(LIVE_KEY));
+    if (c && Array.isArray(c.intervals) && c.savedAt) {
+      live.intervals = c.intervals.filter(function (r) { return Array.isArray(r) && r.length === 3; });
+      live.source = c.source || '';
+      live.savedAt = c.savedAt;
+    }
+  } catch (e) { /* kein Cache */ }
+
+  function saveLive() {
+    try {
+      localStorage.setItem(LIVE_KEY, JSON.stringify({ intervals: live.intervals, source: live.source, savedAt: live.savedAt }));
+    } catch (e) { /* egal */ }
+  }
+
+  /* Beide Quellen werden zu [Start ms, Ende ms, Preis in EUR/MWh] vereinheitlicht. */
+  function parseAwattar(j) {
+    if (!j || !Array.isArray(j.data)) throw new Error('Unerwartetes Format');
+    return j.data.map(function (e) {
+      return [Number(e.start_timestamp), Number(e.end_timestamp), Number(e.marketprice)];
+    }).filter(function (r) { return isFinite(r[0]) && isFinite(r[1]) && isFinite(r[2]); });
+  }
+  function parseEnergyCharts(j) {
+    var t = j && j.unix_seconds, p = j && j.price;
+    if (!Array.isArray(t) || !Array.isArray(p) || !t.length) throw new Error('Unerwartetes Format');
+    var out = [];
+    for (var i = 0; i < t.length; i++) {
+      if (p[i] === null || !isFinite(p[i])) continue;
+      var t0 = t[i] * 1000;
+      var t1 = i + 1 < t.length ? t[i + 1] * 1000 : t0 + (i > 0 ? (t[i] - t[i - 1]) * 1000 : HOUR);
+      out.push([t0, t1, Number(p[i])]);
+    }
+    return out;
+  }
+
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function currentInterval(now) {
+    var iv = live.intervals || [];
+    for (var i = 0; i < iv.length; i++) { if (iv[i][0] <= now && now < iv[i][1]) return iv[i]; }
+    return null;
+  }
+
+  function loadLive(force) {
+    var now = Date.now();
+    if (loading) return Promise.resolve();
+    var fresh = live.intervals && live.intervals.length && (now - live.savedAt) < LIVE_FRESH && currentInterval(now);
+    if (!force && fresh) { renderLive(); return Promise.resolve(); }
+    if (!force && now - lastTry < 5 * 60000) { renderLive(); return Promise.resolve(); }
+    lastTry = now;
+    loading = true;
+
+    var d0 = startOfDay(new Date(now));
+    var startMs = d0.getTime();
+    var endMs = startMs + 48 * HOUR;
+    var tomorrow = new Date(startMs + 36 * HOUR);
+    var sources = [
+      { name: 'aWATTar', url: AWATTAR + '?start=' + startMs + '&end=' + endMs, parse: parseAwattar },
+      { name: 'Energy-Charts', url: ENERGY_CHARTS + '&start=' + ymd(d0) + '&end=' + ymd(tomorrow), parse: parseEnergyCharts }
+    ];
+    var errors = [];
+
+    return sources.reduce(function (chain, s) {
+      return chain.then(function (ok) {
+        if (ok) return true;
+        return getJson(s.url, 8000, 'no-store').then(s.parse).then(function (iv) {
+          if (!iv.length) throw new Error('keine Daten');
+          live.intervals = iv; live.source = s.name; live.savedAt = Date.now(); live.err = '';
+          saveLive();
+          return true;
+        }).catch(function (e) {
+          errors.push(s.name + ': ' + (e && e.message ? e.message : 'Fehler'));
+          return false;
+        });
+      });
+    }, Promise.resolve(false)).then(function (ok) {
+      if (!ok) live.err = errors.join(' · ');
+      loading = false;
+      renderLive();
+    });
+  }
+
+  /* Mittelwert je Stunde des heutigen Tages in ct/kWh */
+  function hourly(iv, d0) {
+    var out = [], y = d0.getFullYear(), m = d0.getMonth(), d = d0.getDate();
+    for (var h = 0; h < 24; h++) {
+      var a = new Date(y, m, d, h).getTime(), b = new Date(y, m, d, h + 1).getTime(), s = 0, n = 0;
+      for (var i = 0; i < iv.length; i++) { if (iv[i][0] >= a && iv[i][0] < b) { s += iv[i][2]; n++; } }
+      out.push(n ? s / n / 10 : null);
+    }
+    return out;
+  }
+
+  function chartSvg(vals, curHour) {
+    var W = 240, H = 64, valid = vals.filter(function (v) { return v !== null; });
+    if (!valid.length) return '';
+    var lo = Math.min(0, Math.min.apply(null, valid)), hi = Math.max(0, Math.max.apply(null, valid));
+    if (hi - lo < 0.1) hi = lo + 0.1;
+    function y(v) { return H * (hi - v) / (hi - lo); }
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Börsenstrompreis je Stunde heute">';
+    vals.forEach(function (v, h) {
+      if (v === null) return;
+      var y0 = y(Math.max(v, 0)), y1 = y(Math.min(v, 0)), ht = y1 - y0;
+      if (ht < 1.5) { ht = 1.5; if (v >= 0) y0 = y1 - 1.5; }
+      s += '<rect class="cb' + (h === curHour ? ' now' : '') + '" x="' + (h * 10 + 1) + '" y="' + y0.toFixed(1) + '" width="8" height="' + ht.toFixed(1) + '" rx="2"></rect>';
+    });
+    s += '<line class="zero" x1="0" x2="' + W + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '"></line></svg>';
+    return s;
+  }
+
+  var liveEls = {
+    pulse: $('livePulse'), status: $('liveStatus'), num: $('liveNum'), when: $('liveWhen'),
+    chart: $('liveChart'), stats: $('liveStats'), note: $('liveNote'), err: $('liveErr')
+  };
+  var SOURCE_TEXT = {
+    'aWATTar': 'Quelle: aWATTar (EPEX Spot, Day-Ahead).',
+    'Energy-Charts': 'Quelle: Energy-Charts, Fraunhofer ISE (CC BY 4.0).'
+  };
+  var NOTE_BASE = 'Großhandelspreis ohne Netzentgelte, Steuern und Abgaben. Die Strompreise oben enthalten beides.';
+
+  function setStatus(kind, text) {
+    liveEls.pulse.className = 'pulse' + (kind === 'ok' ? ' ok' : '');
+    liveEls.status.textContent = text;
+  }
+
+  function renderLive() {
+    var now = Date.now(), iv = live.intervals;
+
+    liveEls.err.hidden = !live.err;
+    liveEls.err.textContent = live.err ? 'Fehler: ' + live.err : '';
+
+    if (!iv || !iv.length) {
+      liveEls.num.textContent = '–';
+      liveEls.chart.innerHTML = '';
+      liveEls.stats.textContent = '';
+      liveEls.when.textContent = live.err ? 'Der Börsenpreis ist gerade nicht erreichbar.' : 'Preis wird geladen …';
+      liveEls.note.textContent = NOTE_BASE;
+      setStatus('warn', live.err ? 'nicht erreichbar' : 'lädt …');
+      return;
+    }
+
+    var cur = currentInterval(now);
+    var d0 = startOfDay(new Date(now));
+    var vals = hourly(iv, d0);
+    var curHour = new Date(now).getHours();
+
+    var savedDate = new Date(live.savedAt);
+    var sameDay = ymd(savedDate) === ymd(new Date(now));
+    var stamp = hhmm(live.savedAt) + (sameDay ? '' : ' · ' + pad(savedDate.getDate()) + '.' + pad(savedDate.getMonth() + 1) + '.');
+    var isFresh = !live.err && (now - live.savedAt) < 90 * 60000 && cur;
+    setStatus(isFresh ? 'ok' : 'warn', (isFresh ? 'Live · ' : 'Zuletzt ') + stamp);
+
+    if (cur) {
+      liveEls.num.textContent = fmtCt(cur[2] / 10);
+      liveEls.when.textContent = 'Day-Ahead · ' + hhmm(cur[0]) + '–' + hhmm(cur[1]) + ' Uhr';
+    } else {
+      liveEls.num.textContent = '–';
+      liveEls.when.textContent = 'Für diese Zeit liegt kein Preis vor.';
+    }
+
+    liveEls.chart.innerHTML = chartSvg(vals, curHour);
+
+    var lo = null, hi = null;
+    vals.forEach(function (v, h) {
+      if (v === null) return;
+      if (lo === null || v < vals[lo]) lo = h;
+      if (hi === null || v > vals[hi]) hi = h;
+    });
+    liveEls.stats.textContent = lo === null ? '' :
+      'Heute tief ' + fmtCt(vals[lo]) + ' ct (' + pad(lo) + ' Uhr) · hoch ' + fmtCt(vals[hi]) + ' ct (' + pad(hi) + ' Uhr)';
+
+    liveEls.note.textContent = NOTE_BASE + ' ' + (SOURCE_TEXT[live.source] || '');
+  }
+
+  var refreshBtn = $('liveRefresh');
+  refreshBtn.addEventListener('click', function () {
+    if (refreshBtn.disabled) return;
+    refreshBtn.disabled = true;
+    loadLive(true).then(function () {
+      setTimeout(function () { refreshBtn.disabled = false; }, 60000);
+    });
+  });
+
+  /* ---------- Stündliche Aktualisierung ----------
+     Zu jeder vollen Stunde (mit kleinem Zufallsversatz, damit nicht alle Handys
+     gleichzeitig laden) werden preise.json und der Börsenstrom neu geholt. */
+  function hourlyTick() {
+    loadPrices();
+    loadLive(false);
+  }
+  function scheduleHourly() {
+    var wait = HOUR - (Date.now() % HOUR) + 3000 + Math.random() * 27000;
+    setTimeout(function () { hourlyTick(); scheduleHourly(); }, wait);
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    if (Date.now() - checkedAt > LIVE_FRESH) loadPrices();
+    loadLive(false);
+  });
+  setInterval(function () { renderLive(); renderChecked(); }, 60000);
+
+  /* ---------- Start ---------- */
+  inputEl.value = String(state.bedarf);
+  jazEl.value = String(state.jaz);
+  syncSegs();
+  renderAll();
+  renderLive();
+  loadPrices();
+  loadLive(false);
+  scheduleHourly();
+  setTimeout(function () { document.documentElement.classList.add('anim'); }, 50);
+})();
+</script>
+</body>
+</html>
