@@ -1,0 +1,8 @@
+{
+  "aktualisiert": "2026-11-04",
+  "heizoel": { "eurPro100L": 172, "vorjahr": 92, "stand": "04.11.2026" },
+  "gas": { "neu": 12.6, "bestand": 11.8, "grund": 13.6, "vorjahrNeu": 8.7, "stand": "02.11.2026" },
+  "strom": { "neu": 31.2, "bestand": 33.4, "grund": 40.4, "vorjahrNeu": 27.0, "stand": "29.10. bis 02.11.2026" },
+  "waermepumpenstrom": { "tarif": "E.ON ÖkoStrom Wärmepumpe ET 12", "ct": 18.9, "stand": "01.11.2026" },
+  "pellets": { "eurProTonne": 464.61, "kwhProKg": 5, "stand": "Oktober 2026" }
+}
